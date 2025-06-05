@@ -1,7 +1,7 @@
 // 游戏配置
 const gameConfig = {
     // 颜色-文字映射
-    textMap: { '红': 'red', '黄': '#FFD600', '蓝': 'blue', '绿': 'green', '紫': 'purple', '粉': 'pink' },
+    textMap: { '红': 'red', '黄': 'yellow', '蓝': 'blue', '绿': 'green', '紫': 'purple', '粉': 'pink' },
 
 
     // 连击奖励配置
@@ -2168,8 +2168,10 @@ function startAdvancedGame() {
     }
     let allCards = [];
     pairs.forEach(pair => {
-        allCards.push({ ...pair });
-        allCards.push({ ...pair });
+        // 如果是黄色，替换颜色为#FFD600
+        const color = (pair.color === 'yellow') ? '#FFD600' : pair.color;
+        allCards.push({ text: pair.text, color });
+        allCards.push({ text: pair.text, color });
     });
     // 打乱所有牌
     for (let i = allCards.length - 1; i > 0; i--) {
