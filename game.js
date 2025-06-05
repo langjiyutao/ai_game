@@ -52,7 +52,7 @@ window.gameState = {
     coverTimer: null, // 遮盖定时器
     coverInterval: null, // 遮盖间隔定时器
     _adModalShown: false, // 新增广告弹窗标记
-    _advancedUnlockModalShown: false // 新增进阶玩法解锁弹窗标记
+    advancedUnlockModalShown: false // 新增进阶玩法解锁弹窗标记
 };
 
 // DOM元素引用
@@ -277,6 +277,9 @@ function loadSavedData() {
         gameState.unlockedAchievements = data.unlockedAchievements || [];
         gameState.maxCombo = data.maxCombo || 0;
         gameState.clearedLevels = data.clearedLevels || 0;
+        // 新增：读取进阶玩法解锁状态
+        gameState.advancedUnlockModalShown = !!data.advancedUnlockModalShown;
+        window.advancedUnlockModalShown = gameState.advancedUnlockModalShown;
         // 不从localStorage读取hasUsedDebugMode，保持为false
     }
 }
@@ -286,7 +289,9 @@ function saveGameData() {
     const dataToSave = {
         unlockedAchievements: gameState.unlockedAchievements,
         maxCombo: gameState.maxCombo,
-        clearedLevels: gameState.clearedLevels
+        clearedLevels: gameState.clearedLevels,
+        // 新增：保存进阶玩法解锁状态
+        advancedUnlockModalShown: !!gameState.advancedUnlockModalShown
         // 不保存hasUsedDebugMode到localStorage
     };
     localStorage.setItem('colorWordGame', JSON.stringify(dataToSave));
@@ -1591,9 +1596,11 @@ function updateResultScreen() {
         if (gameState.score === 30) {
         // if (gameState.score >= 400) {
             // 只在第一次达到400分且按钮未显示过时弹窗
-            if (!window._advancedUnlockModalShown) {
+            if (!gameState.advancedUnlockModalShown) {
                 showAdvancedUnlockModal();
-                window._advancedUnlockModalShown = true;
+                gameState.advancedUnlockModalShown = true;
+                window.advancedUnlockModalShown = true;
+                saveGameData();
             }
             advBtn.style.display = '';
         }
@@ -1626,6 +1633,10 @@ function showAdvancedUnlockModal() {
     document.getElementById('advanced-unlock-close-btn').onclick = function() {
         modal.style.display = 'none';
     };
+    // 新增：弹窗出现时也同步状态
+    gameState.advancedUnlockModalShown = true;
+    window.advancedUnlockModalShown = true;
+    saveGameData();
 }
 
 // 渲染成就列表
@@ -2077,6 +2088,9 @@ function setupAdvancedMode() {
     backFromAdvanced.addEventListener('click', () => {
         showScreen('mainMenu');
     });
+    if (window.advancedUnlockModalShown) {
+        startAdvancedBtn.style.display = '';
+    }
 }
 
 // 进阶玩法核心逻辑
@@ -2228,6 +2242,7 @@ function renderAdvancedBoardV2() {
             };
             cell.ondrop = (e) => {
                 e.preventDefault();
+                e.stopPropagation(); // 防止冒泡到全局drop
                 const from = e.dataTransfer.getData('text/plain');
                 const [fromR, fromC] = from.split(',').map(Number);
                 if ((fromR === r && fromC === c)) return;
@@ -2299,6 +2314,7 @@ function renderAdvancedBoardV2() {
                 emptyDiv.ondragover = (e) => { e.preventDefault(); };
                 emptyDiv.ondrop = (e) => {
                     e.preventDefault();
+                    e.stopPropagation(); // 防止冒泡到全局drop
                     const from = e.dataTransfer.getData('text/plain');
                     const [fromR, fromC] = from.split(',').map(Number);
                     if ((fromR === r && fromC === c)) return;
