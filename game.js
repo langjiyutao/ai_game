@@ -2223,6 +2223,27 @@ function renderAdvancedBoardV2() {
     board.style.gridTemplateRows = `repeat(${advancedConfig.rows}, 1fr)`;
     board.style.gridTemplateColumns = `repeat(${advancedConfig.cols}, 1fr)`;
     board.style.gap = '16px';
+
+    // 判断是否为触摸设备
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    // 拖拽影子元素
+    let dragShadow = null;
+    let dragFrom = null;
+
+    function removeDragShadow() {
+        if (dragShadow) {
+            dragShadow.remove();
+            dragShadow = null;
+        }
+    }
+
+    function getCellByTouch(touch) {
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!el) return null;
+        // 找到最近的advanced-cell
+        return el.closest('.advanced-cell');
+    }
+
     for (let r = 0; r < advancedConfig.rows; r++) {
         for (let c = 0; c < advancedConfig.cols; c++) {
             const cell = document.createElement('div');
@@ -2259,13 +2280,6 @@ function renderAdvancedBoardV2() {
                         // 两个都弹栈
                         grid[fromR][fromC].pop();
                         grid[r][c].pop();
-                        // 播放随机yay音效
-                        // const yayIdx = Math.floor(Math.random() * 3) + 1;
-                        // const yaySound = elements.sounds[`yay${yayIdx}`];
-                        // if (yaySound) {
-                        //     yaySound.currentTime = 0;
-                        //     yaySound.play();
-                        // }
                         elements.sounds.wrong.currentTime = 0;
                         elements.sounds.wrong.play();
                     } else if (fromCard.text === toCard.text && fromCard.color !== toCard.color) {
@@ -2305,6 +2319,88 @@ function renderAdvancedBoardV2() {
                 flippedDiv.ondragstart = (e) => {
                     e.dataTransfer.setData('text/plain', `${r},${c}`);
                 };
+                // 移动端touch拖拽兼容
+                if (isTouchDevice) {
+                    flippedDiv.ontouchstart = function (e) {
+                        if (e.touches.length > 1) return;
+                        dragFrom = { r, c };
+                        dragShadow = flippedDiv.cloneNode(true);
+                        dragShadow.style.position = 'fixed';
+                        dragShadow.style.pointerEvents = 'none';
+                        dragShadow.style.opacity = '0.8';
+                        dragShadow.style.zIndex = 9999;
+                        dragShadow.style.left = e.touches[0].clientX - 24 + 'px';
+                        dragShadow.style.top = e.touches[0].clientY - 24 + 'px';
+                        dragShadow.style.transform = 'scale(1.1)';
+                        document.body.appendChild(dragShadow);
+                        document.body.style.userSelect = 'none';
+                        e.preventDefault();
+                    };
+                    flippedDiv.ontouchmove = function (e) {
+                        if (!dragShadow) return;
+                        dragShadow.style.left = e.touches[0].clientX - 24 + 'px';
+                        dragShadow.style.top = e.touches[0].clientY - 24 + 'px';
+                        e.preventDefault();
+                    };
+                    flippedDiv.ontouchend = function (e) {
+                        if (!dragShadow || !dragFrom) return;
+                        // 取touchend最后一个点
+                        const touch = (e.changedTouches && e.changedTouches[0]) || (e.touches && e.touches[0]);
+                        if (!touch) {
+                            removeDragShadow();
+                            dragFrom = null;
+                            document.body.style.userSelect = '';
+                            return;
+                        }
+                        const cellEl = getCellByTouch(touch);
+                        if (cellEl && !cellEl.classList.contains('advanced-cell-disabled')) {
+                            const toR = parseInt(cellEl.dataset.row);
+                            const toC = parseInt(cellEl.dataset.col);
+                            if (!(dragFrom.r === toR && dragFrom.c === toC)) {
+                                const grid = window._advancedGrid;
+                                if (!grid[dragFrom.r][dragFrom.c].length) {
+                                    removeDragShadow();
+                                    dragFrom = null;
+                                    document.body.style.userSelect = '';
+                                    return;
+                                }
+                                const fromCard = grid[dragFrom.r][dragFrom.c][grid[dragFrom.r][dragFrom.c].length - 1];
+                                if (!grid[toR][toC] || grid[toR][toC].length === 0) {
+                                    grid[toR][toC].push(fromCard);
+                                    grid[dragFrom.r][dragFrom.c].pop();
+                                } else {
+                                    const toCard = grid[toR][toC][grid[toR][toC].length - 1];
+                                    if (fromCard.text === toCard.text && fromCard.color === toCard.color) {
+                                        grid[dragFrom.r][dragFrom.c].pop();
+                                        grid[toR][toC].pop();
+                                        elements.sounds.wrong.currentTime = 0;
+                                        elements.sounds.wrong.play();
+                                    } else if (fromCard.text === toCard.text && fromCard.color !== toCard.color) {
+                                        grid[dragFrom.r][dragFrom.c].pop();
+                                        grid[toR][toC].push(fromCard);
+                                    } else {
+                                        // shake动画
+                                        const topDiv = cellEl.querySelector('.advanced-flipped-card');
+                                        if (topDiv) {
+                                            topDiv.classList.add('shake');
+                                            setTimeout(() => topDiv.classList.remove('shake'), 500);
+                                        }
+                                        removeDragShadow();
+                                        dragFrom = null;
+                                        document.body.style.userSelect = '';
+                                        return;
+                                    }
+                                }
+                                renderAdvancedBoardV2();
+                                checkAdvancedWinV2();
+                            }
+                        }
+                        removeDragShadow();
+                        dragFrom = null;
+                        document.body.style.userSelect = '';
+                        e.preventDefault();
+                    };
+                }
                 stackDiv.appendChild(flippedDiv);
             } else if (grid[r][c]) {
                 // 栈整体为空，显示可放置虚拟牌位
