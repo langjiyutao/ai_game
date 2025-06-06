@@ -1614,7 +1614,7 @@ function showAdvancedUnlockModal() {
         modal.style.display = 'flex';
         return;
     }
-    // 创建弹窗结构
+    // 创建弹窗结构，增加"国王的谜题"按钮
     modal = document.createElement('div');
     modal.id = 'advanced-unlock-modal';
     modal.className = 'ad-modal';
@@ -1624,14 +1624,21 @@ function showAdvancedUnlockModal() {
         <h3>勇士，恭喜你被国王看中！</h3>
         <p>特邀来解决老国王留下的谜题，<br>地位、金钱，任你挑选！</p>
         <div class="ad-modal-buttons">
-          <button id="advanced-unlock-close-btn" class="btn btn-primary">关闭</button>
+          <button id="advanced-unlock-close-btn" class="btn btn-primary">等会儿再玩</button>
+          <button id="advanced-unlock-play-btn" class="btn btn-primary">国王的谜题</button>
         </div>
       </div>
     `;
     document.body.appendChild(modal);
-    // 按钮事件
+    // 关闭按钮事件
     document.getElementById('advanced-unlock-close-btn').onclick = function() {
         modal.style.display = 'none';
+    };
+    // 新增：国王的谜题按钮事件
+    document.getElementById('advanced-unlock-play-btn').onclick = function() {
+        modal.style.display = 'none';
+        showScreen('advanced');
+        startAdvancedGame();
     };
     // 新增：弹窗出现时也同步状态
     gameState.advancedUnlockModalShown = true;
